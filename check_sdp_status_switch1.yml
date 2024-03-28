@@ -1,0 +1,27 @@
+---
+- name: Check SDP status on SWITCH1
+  connection: network_cli
+  gather_facts: no  # Disable gathering facts for efficiency
+  vars:
+  hosts: "{{ SWITCH_1 }}"
+  tasks:
+    - name: Gather SDP status
+      ale.aos.aos_command:
+        commands:
+          - show service sdp
+      register: sdp_status_output
+    - name: Display show sdp
+      debug:
+        var: sdp_status_output.stdout_lines
+
+
+    - name: Extract operational status with regex
+      set_fact:
+        oper_status: "{{ sdp_status_output.stdout | regex_search(sdp_id + '\\s+' + SWITCH_1_VTEP + '\\s+\\S+\\s+(\\S+)\\s+VxLAN') | regex_replace('.* (\\S+)\\s+VxLAN.*', '\\1') }}"
+    - name: Display operational status
+      debug:
+        var: oper_status
+    - name: Check the status
+      fail:
+        msg: "Configuration has been pushed, but the SDP is down. The VTEP needs to be pingable. Check your underlay routing protocol."
+      when: "'Down' in oper_status"

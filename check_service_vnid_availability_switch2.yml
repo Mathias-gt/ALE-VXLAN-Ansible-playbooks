@@ -1,0 +1,46 @@
+---
+- name: Check the availability of the Service ID and VNID for SWITCH2
+  connection: network_cli
+  gather_facts: no  # Disable gathering facts for efficiency
+  hosts: "{{ SWITCH_2 }}"
+  tasks:
+    - name: Gather Services
+      ale.aos.aos_command:
+        commands:
+          - show service 
+      register: show_service
+    - name: Display Services
+      debug:
+        var: show_service.stdout
+
+
+    - name: Parse show service output
+      set_fact:
+        service_ids: "{{ show_service.stdout[0] | regex_findall('^\\d+', multiline=True) }}"
+    - name: Display Service IDs already used
+      debug:
+        var: service_ids
+    - name: Check if SERVICE_ID is not equal to any already used Service IDs
+      fail:
+        msg: "Service ID is already in use."
+      when: SERVICE_ID | string in service_ids
+
+
+    - name: Gather VXLAN Services
+      ale.aos.aos_command:
+        commands:
+          - show service vxlan
+      register: show_service_vxlan
+    - name: Display VXLAN Services
+      debug:
+        var: show_service_vxlan.stdout
+    - name: Parse show service vxlan output and extract VNID values
+      set_fact:
+        vnids: "{{ show_service_vxlan.stdout[0] | regex_findall('\\n\\d+\\s+\\S+\\s+\\S+\\s+\\S+\\s+\\d+\\s+\\d+\\s+(\\d+)\\s+\\S+', multiline=True) }}"
+    - name: Display VNID values already used
+      debug:
+        var: vnids
+    - name: Check if VNID is not equal to any VNIDs
+      fail:
+        msg: "VNID is already in use."
+      when: VNID | string in vnids

@@ -1,0 +1,57 @@
+---
+- name: Push the VXLAN service configuration on SWITCH2
+  connection: network_cli
+  gather_facts: no  # Disable gathering facts for efficiency
+  vars:
+    while_list: ['100', '99', '98', '97', '96', '95', '94', '93', '92', '91', '90', '89', '88', '87', '86', '85', '84', '83', '82', '81', '80', '79', '78', '77', '76', '75', '74', '73', '72', '71', '70', '69', '68', '67', '66', '65', '64', '63', '62', '61', '60', '59', '58', '57', '56', '55', '54', '53', '52', '51', '50', '49', '48', '47', '46', '45', '44', '43', '42', '41', '40', '39', '38', '37', '36', '35', '34', '33', '32', '31', '30', '29', '28', '27', '26', '25', '24', '23', '22', '21', '20', '19', '18', '17', '16', '15', '14', '13', '12', '11', '10', '9', '8', '7', '6', '5', '4', '3', '2', '1']
+  hosts: "{{ SWITCH_2 }}"
+  tasks:
+    - name: Gather running configuration
+      ale.aos.aos_command:
+        commands:
+          - show configuration snapshot
+      register: switch_config
+    - name: Display switch configuration
+      debug:
+        var: switch_config.stdout_lines
+
+
+    - name: if SDP exist
+      block:
+        - name: Extract SDP ID using regex
+          set_fact:
+            sdp_id: "{{ switch_config.stdout | regex_search('service sdp (\\d+) vxlan far-end ' + SWITCH_2_VTEP) | regex_replace('.*sdp (\\d+) .*', '\\1')  }}"
+        - name: Display SDP ID
+          debug:
+            var: sdp_id
+      when: switch_config.stdout is search('vxlan far-end ' ~ SWITCH_2_VTEP)
+
+
+    - name: if SDP does not exist
+      block:
+        - name: Get first SDP ID available
+          set_fact:
+            sdp_id: "{{ item }}"
+          loop: "{{ while_list }}"
+          when: switch_config.stdout is not search('service sdp ' ~ item )
+        - name: Display first SDP ID available
+          debug:
+            var: sdp_id
+        - name: Push SDP configuration
+          ale.aos.aos_config:
+            lines:
+              - service sdp {{ sdp_id }} vxlan far-end {{ SWITCH_2_VTEP }}
+      when: switch_config.stdout is not search('vxlan far-end ' ~ SWITCH_2_VTEP)
+
+    - name: Push VXLAN configuration
+      ale.aos.aos_config:
+        lines:
+          - service {{ SERVICE_ID }} vxlan vnid {{ VNID }} multicast-mode head-end
+          - service {{ SERVICE_ID }} bind-sdp {{ sdp_id }}
+
+    - name: Push VXLAN access ports configuration
+      ale.aos.aos_config:
+        lines:
+          - service access port {{ item }} 
+          - service {{ SERVICE_ID }} sap port {{ item }}:{{ ACCESS_PORTS_TAG }}
+      loop: "{{ SWITCH_2_ACCESS_PORTS }}"
