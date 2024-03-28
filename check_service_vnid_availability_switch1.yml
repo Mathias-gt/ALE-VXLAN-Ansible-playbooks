@@ -11,7 +11,7 @@
       register: show_service
     - name: Display Services
       debug:
-        var: show_service.stdout
+        var: show_service.stdout_lines
 
 
     - name: Parse show service output
