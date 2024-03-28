@@ -17,7 +17,7 @@
 
     - name: Extract operational status with regex
       set_fact:
-        oper_status: "{{ sdp_status_output.stdout | regex_search(sdp_id + '\\s+' + SWITCH_2_VTEP + '\\s+\\S+\\s+(\\S+)\\s+VxLAN') | regex_replace('.* (\\S+)\\s+VxLAN.*', '\\1') }}"
+        oper_status: "{{ sdp_status_output.stdout | regex_search('\\d+\\s+' + SWITCH_2_VTEP + '\\s+\\S+\\s+(\\S+)\\s+VxLAN') | regex_replace('.* (\\S+)\\s+VxLAN.*', '\\1') }}"
     - name: Display operational status
       debug:
         var: oper_status
