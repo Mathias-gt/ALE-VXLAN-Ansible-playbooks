@@ -4,6 +4,10 @@
   gather_facts: no  # Disable gathering facts for efficiency
   hosts: "{{ SWITCH_2 }}"
   tasks:
+    - name: Pause for 30 seconds to let the SDP coming up
+      ansible.builtin.pause:
+        seconds: 30
+
     - name: Gather Services
       ale.aos.aos_command:
         commands:
